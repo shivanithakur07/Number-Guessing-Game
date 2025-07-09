@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Number Guessing Game</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+        .animate-pulse-slow {
+            animation: pulse 3s infinite;
+        }
+        .glow-effect {
+            box-shadow: 0 0 15px rgba(59, 130, 246, 0.5);
+        }
+        .game-container {
+            transition: all 0.3s ease;
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-blue-50 to-indigo-100 min-h-screen flex flex-col items-center justify-center p-4">
+    <div class="game-container bg-white rounded-xl shadow-xl p-8 max-w-md w-full">
+        <div class="text-center mb-8">
+            <h1 class="text-3xl font-bold text-indigo-700 mb-2">Guess the Number</h1>
+            <p class="text-gray-600">Can you find the hidden number between 1 and 100?</p>
+        </div>
+
+        <div class="bg-indigo-50 rounded-lg p-6 mb-6">
+            <div class="flex justify-between items-center mb-4">
+                <p class="text-gray-700">Attempts: <span id="attempts" class="font-bold">0</span></p>
+                <p class="text-gray-700">Best Score: <span id="best-score" class="font-bold">-</span></p>
+            </div>
+
+            <div class="relative">
+                <input type="number" id="guess-input" 
+                    class="w-full px-4 py-3 rounded-lg border-2 border-indigo-200 focus:border-indigo-500 focus:outline-none text-center text-lg"
+                    placeholder="Enter your guess" min="1" max="100">
+                <button id="guess-btn" 
+                    class="mt-4 w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-4 rounded-lg transition duration-200 flex items-center justify-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v3.586L7.707 9.293a1 1 0 00-1.414 1.414l3 3a1 1 0 001.414 0l3-3a1 1 0 00-1.414-1.414L11 10.586V7z" clip-rule="evenodd" />
+                    </svg>
+                    Submit Guess
+                </button>
+            </div>
+        </div>
+
+        <div id="feedback" class="hidden bg-gray-50 rounded-lg p-4 text-center">
+            <p id="feedback-text" class="text-lg font-medium"></p>
+            <div id="hint-container" class="mt-3">
+                <p id="hint-text" class="text-gray-600"></p>
+            </div>
+        </div>
+
+        <div id="victory-screen" class="hidden text-center mt-6">
+            <img src="https://storage.googleapis.com/workspace-0f70711f-8b4e-4d94-86f1-2a93ccde5887/image/3464aaa1-5290-4e84-abfc-57dfcae9b40b.png" alt="Celebration illustration with confetti and a gold trophy on a blue background" class="mx-auto mb-4 rounded-lg" />
+            <h2 class="text-2xl font-bold text-indigo-700 mb-2">🎉 You guessed it!</h2>
+            <p id="victory-text" class="text-gray-600 mb-4"></p>
+            <button id="play-again-btn" 
+                class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg transition">
+                Play Again
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // Game state
+        let targetNumber;
+        let attempts = 0;
+        let bestScore = localStorage.getItem('bestScore') || null;
+
+        // DOM elements
+        const guessInput = document.getElementById('guess-input');
+        const guessBtn = document.getElementById('guess-btn');
+        const attemptsDisplay = document.getElementById('attempts');
+        const bestScoreDisplay = document.getElementById('best-score');
+        const feedback = document.getElementById('feedback');
+        const feedbackText = document.getElementById('feedback-text');
+        const hintText = document.getElementById('hint-text');
+        const victoryScreen = document.getElementById('victory-screen');
+        const victoryText = document.getElementById('victory-text');
+        const playAgainBtn = document.getElementById('play-again-btn');
+
+        // Initialize game
+        function initGame() {
+            targetNumber = Math.floor(Math.random() * 100) + 1;
+            attempts = 0;
+            attemptsDisplay.textContent = attempts;
+            bestScoreDisplay.textContent = bestScore || '-';
+            
+            feedback.classList.add('hidden');
+            victoryScreen.classList.add('hidden');
+            
+            // Reset input
+            guessInput.value = '';
+            guessInput.focus();
+        }
+
+        // Check user's guess
+        function checkGuess() {
+            const userGuess = parseInt(guessInput.value);
+            
+            // Validate input
+            if (isNaN(userGuess) || userGuess < 1 || userGuess > 100) {
+                feedback.classList.remove('hidden');
+                feedbackText.textContent = "Please enter a valid number between 1 and 100!";
+                feedbackText.className = "text-lg font-medium text-red-500";
+                return;
+            }
+
+            attempts++;
+            attemptsDisplay.textContent = attempts;
+
+            // Compare guess with target number
+            if (userGuess === targetNumber) {
+                // Game won
+                handleVictory();
+            } else {
+                // Provide feedback
+                feedback.classList.remove('hidden');
+                
+                // Calculate difference
+                const difference = Math.abs(targetNumber - userGuess);
+                let temperature;
+                
+                if (difference <= 5) {
+                    temperature = "🔥 Very hot!";
+                    feedback.className = "bg-red-100 rounded-lg p-4 text-center";
+                } else if (difference <= 15) {
+                    temperature = "☀️ Hot";
+                    feedback.className = "bg-orange-100 rounded-lg p-4 text-center";
+                } else if (difference <= 30) {
+                    temperature = "🌤️ Warm";
+                    feedback.className = "bg-yellow-100 rounded-lg p-4 text-center";
+                } else {
+                    temperature = "❄️ Cold";
+                    feedback.className = "bg-blue-100 rounded-lg p-4 text-center";
+                }
+                
+                const direction = userGuess < targetNumber ? "higher" : "lower";
+                feedbackText.textContent = `${temperature} (Try ${direction})`;
+                feedbackText.className = "text-lg font-medium " + 
+                    (difference <= 5 ? "text-red-600" : 
+                     difference <= 15 ? "text-orange-600" : 
+                     difference <= 30 ? "text-yellow-600" : "text-blue-600");
+                
+                hintText.textContent = `The number is ${direction} than ${userGuess}`;
+            }
+        }
+
+        // Handle victory
+        function handleVictory() {
+            // Update best score
+            if (!bestScore || attempts < bestScore) {
+                bestScore = attempts;
+                localStorage.setItem('bestScore', bestScore);
+                bestScoreDisplay.textContent = bestScore;
+            }
+            
+            // Show victory screen
+            victoryScreen.classList.remove('hidden');
+            victoryText.textContent = `You found the number ${targetNumber} in ${attempts} attempt${attempts !== 1 ? 's' : ''}!`;
+            
+            // Hide feedback
+            feedback.classList.add('hidden');
+        }
+
+        // Event listeners
+        guessBtn.addEventListener('click', checkGuess);
+        guessInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                checkGuess();
+            }
+        });
+        playAgainBtn.addEventListener('click', initGame);
+
+        // Start the game
+        initGame();
+    </script>
+</body>
+</html>
+
